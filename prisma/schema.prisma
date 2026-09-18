@@ -1,0 +1,83 @@
+// Camoushiring — Prisma schema tuned for Vercel Postgres (Neon) serverless.
+//
+// POSTGRES_PRISMA_URL      -> pooled connection (PgBouncer). Used at runtime by
+//                             every serverless function, so cold starts never
+//                             exhaust the free-tier connection cap.
+// POSTGRES_URL_NON_POOLING -> direct connection. Prisma needs this for
+//                             `db push` / `migrate`, which cannot run over PgBouncer.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+enum Role {
+  STUDENT
+  COMPANY
+}
+
+enum ApplicationStatus {
+  APPLIED
+  INTERVIEW_CONFIRMED
+  REJECTED
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        Role     @default(STUDENT)
+  companyName String?
+  headline    String?
+  createdAt   DateTime @default(now())
+
+  postedJobs   Job[]         @relation("PostedJobs")
+  applications Application[]
+
+  @@index([role])
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  location    String
+  salary      String
+  employment  String   @default("Full-time")
+  createdAt   DateTime @default(now())
+
+  companyId String
+  company   User   @relation("PostedJobs", fields: [companyId], references: [id], onDelete: Cascade)
+
+  applications Application[]
+
+  @@index([companyId])
+  @@index([location])
+  @@index([createdAt])
+}
+
+model Application {
+  id        String            @id @default(cuid())
+  status    ApplicationStatus @default(APPLIED)
+  cvUrl     String
+  note      String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // A student can apply to a given job exactly once.
+  @@unique([jobId, studentId])
+  @@index([studentId])
+  @@index([status])
+}

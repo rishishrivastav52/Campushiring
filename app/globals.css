@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #12161c;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 176, 32, 0.07), transparent);
+  color: #f2f4f7;
+}
+
+*:focus-visible {
+  outline: 2px solid #ffb020;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Shared primitives, kept here so page files stay readable. */
+@layer components {
+  .field {
+    @apply w-full rounded-md border border-line bg-ink/60 px-3 py-2 text-[15px] text-paper
+           placeholder:text-mist/60 focus:border-signal/70 focus:outline-none;
+  }
+  .label {
+    @apply mb-1.5 block text-[13px] font-medium text-mist;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-signal px-4 py-2
+           text-[14px] font-semibold text-ink transition-colors hover:bg-signal/85
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-line px-3 py-1.5
+           text-[13px] font-medium text-paper transition-colors hover:border-mist/50 hover:bg-slate1;
+  }
+  .panel {
+    @apply rounded-lg border border-line bg-slate1/70;
+  }
+}
