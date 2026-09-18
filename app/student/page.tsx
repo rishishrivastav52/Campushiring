@@ -1,11 +1,13 @@
+import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { ExternalLink, Search } from "lucide-react";
+import { ExternalLink, Search, UserRound } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { filterJobs, getMyApplications } from "@/app/actions";
+import { filterJobs, getFellowApplicants, getMyApplications, getMyProfile, getSavedJobIds } from "@/app/actions";
 import { ApplyForm } from "@/components/ApplyForm";
+import { SaveJobButton } from "@/components/SaveJobButton";
 import { StatusPill } from "@/components/StatusPill";
 import { TopBar } from "@/components/TopBar";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate, skillMatchPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +18,35 @@ export default async function StudentHub({ searchParams }: Props) {
   const q = searchParams?.q ?? "";
   const location = searchParams?.location ?? "";
 
-  const [jobs, applications] = await Promise.all([filterJobs(q, location), getMyApplications()]);
+  const [jobs, applications, savedJobIds, profile] = await Promise.all([
+    filterJobs(q, location),
+    getMyApplications(),
+    getSavedJobIds(),
+    getMyProfile(),
+  ]);
   const appliedJobIds = new Set(applications.map((a) => a.job.id));
+
+  // Only fetched for jobs this student already applied to — the action
+  // itself also enforces that gate server-side.
+  const fellowEntries = await Promise.all(
+    jobs
+      .filter((j) => appliedJobIds.has(j.id))
+      .map(async (j) => [j.id, await getFellowApplicants(j.id)] as const),
+  );
+  const fellowApplicantsByJob = new Map(fellowEntries);
 
   return (
     <>
       <TopBar who={session?.user?.name ?? "Student"} context="Job hub" />
 
       <main className="mx-auto max-w-5xl space-y-10 px-5 py-8">
+        <div className="flex justify-end">
+          <Link href="/student/profile" className="btn-ghost">
+            <UserRound className="h-3.5 w-3.5" aria-hidden />
+            Your profile
+          </Link>
+        </div>
+
         {/* Search is the primary job of this screen, so it leads. */}
         <form method="GET" className="panel p-5">
           <h1 className="font-display text-[22px] font-semibold tracking-tight">Find your next role</h1>
@@ -65,12 +88,29 @@ export default async function StudentHub({ searchParams }: Props) {
             </p>
           ) : (
             <ul className="divide-y divide-line border-y border-line">
-              {jobs.map((job) => (
+              {jobs.map((job) => {
+                const match = skillMatchPercent(profile?.skills, `${job.title} ${job.description}`);
+                const fellows = fellowApplicantsByJob.get(job.id) ?? [];
+
+                return (
                 <li key={job.id} className="py-5">
                   <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
                     <h3 className="text-[16px] font-medium">{job.title}</h3>
                     <p className="text-[13px] text-mist">{job.company.companyName || job.company.name}</p>
-                    <p className="ml-auto text-[13px] text-mist">Posted {formatDate(job.createdAt)}</p>
+                    {match !== null && match > 0 && (
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[12px] font-medium",
+                          match >= 50 ? "border-go/40 bg-go/10 text-go" : "border-signal/40 bg-signal/10 text-signal",
+                        )}
+                      >
+                        {match}% skill match
+                      </span>
+                    )}
+                    <div className="ml-auto flex items-center gap-3">
+                      <p className="text-[13px] text-mist">Posted {formatDate(job.createdAt)}</p>
+                      <SaveJobButton jobId={job.id} saved={savedJobIds.has(job.id)} />
+                    </div>
                   </div>
 
                   <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
@@ -96,9 +136,23 @@ export default async function StudentHub({ searchParams }: Props) {
 
                   <div className="mt-4">
                     <ApplyForm jobId={job.id} alreadyApplied={appliedJobIds.has(job.id)} />
+                    {appliedJobIds.has(job.id) && fellows.length > 0 && (
+                      <p className="mt-2 text-[13px] text-mist">
+                        {fellows.length} other {fellows.length === 1 ? "person has" : "people have"} applied —{" "}
+                        {fellows.map((f, i) => (
+                          <span key={f.id}>
+                            <Link href={`/profile/${f.id}`} className="text-signal hover:underline">
+                              {f.name}
+                            </Link>
+                            {i < fellows.length - 1 ? ", " : ""}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </section>

@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { ApplicationStatus, Role } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendStatusEmail } from "@/lib/email";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -201,15 +202,29 @@ export async function updateApplicationStatus(formData: FormData): Promise<Actio
   const status = allowed[raw];
   if (!status) return { ok: false, message: "Unknown status." };
 
-  // updateMany with a nested job.companyId filter gives ownership checking and
-  // the write in a single round trip — one query per action on a pooled connection.
-  const result = await prisma.application.updateMany({
+  // Looked up first (rather than a blind updateMany) so we have the
+  // candidate's email and the job title on hand to send the notification —
+  // the nested job.companyId filter still keeps this scoped to the
+  // company's own postings, so a forged applicationId matches nothing.
+  const application = await prisma.application.findFirst({
     where: { id: applicationId, job: { companyId: company.id } },
-    data: { status },
+    select: {
+      id: true,
+      job: { select: { title: true } },
+      student: { select: { email: true } },
+    },
   });
 
-  if (result.count === 0) {
+  if (!application) {
     return { ok: false, message: "That application is not on one of your postings." };
+  }
+
+  await prisma.application.update({ where: { id: application.id }, data: { status } });
+
+  if (status === ApplicationStatus.INTERVIEW_CONFIRMED || status === ApplicationStatus.REJECTED) {
+    // Fire-and-forget: email is a nice-to-have, so a slow or failed send
+    // should never hold up or break the status update itself.
+    void sendStatusEmail(application.student.email, application.job.title, status);
   }
 
   revalidatePath("/company");
@@ -249,6 +264,7 @@ export async function getCompanyBoard() {
         cvUrl: true,
         note: true,
         createdAt: true,
+        studentId: true,
         job: { select: { id: true, title: true, location: true } },
         student: { select: { name: true, email: true, headline: true } },
       },
@@ -284,6 +300,162 @@ export async function getMyApplications() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Student profile — bio, skills, and a private view counter
+ * ------------------------------------------------------------------ */
+
+export async function updateProfile(formData: FormData): Promise<ActionResult> {
+  const student = await requireUser(Role.STUDENT);
+
+  const headline = String(formData.get("headline") || "").trim();
+  const bio = String(formData.get("bio") || "").trim();
+  const skills = String(formData.get("skills") || "").trim();
+
+  await prisma.user.update({
+    where: { id: student.id },
+    data: {
+      headline: headline || null,
+      bio: bio || null,
+      skills: skills || null,
+    },
+  });
+
+  revalidatePath("/student/profile");
+  return { ok: true, message: "Profile updated." };
+}
+
+export async function getMyProfile() {
+  const user = await requireUser();
+
+  return prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      name: true,
+      email: true,
+      headline: true,
+      bio: true,
+      skills: true,
+      profileViews: true,
+    },
+  });
+}
+
+// Loads a student's profile for someone else to view (a company checking out
+// a candidate) and counts the visit — but only the count is ever stored, not
+// who looked, so the student can see *that* they were viewed, never *by whom*.
+export async function viewStudentProfile(studentId: string) {
+  const viewer = await requireUser();
+
+  const student = await prisma.user.findFirst({
+    where: { id: studentId, role: Role.STUDENT },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      headline: true,
+      bio: true,
+      skills: true,
+    },
+  });
+
+  if (!student) return null;
+
+  if (viewer.id !== student.id) {
+    await prisma.user.update({
+      where: { id: student.id },
+      data: { profileViews: { increment: 1 } },
+    });
+  }
+
+  return student;
+}
+
+/* ------------------------------------------------------------------ *
+ * Saved jobs — a student's shortlist
+ * ------------------------------------------------------------------ */
+
+export async function toggleSaveJob(formData: FormData): Promise<ActionResult> {
+  const student = await requireUser(Role.STUDENT);
+  const jobId = String(formData.get("jobId") || "");
+  if (!jobId) return { ok: false, message: "Missing job." };
+
+  const existing = await prisma.savedJob.findUnique({
+    where: { jobId_studentId: { jobId, studentId: student.id } },
+    select: { id: true },
+  });
+
+  if (existing) {
+    await prisma.savedJob.delete({ where: { id: existing.id } });
+    revalidatePath("/student");
+    revalidatePath("/student/profile");
+    return { ok: true, message: "Removed from saved jobs." };
+  }
+
+  await prisma.savedJob.create({ data: { jobId, studentId: student.id } });
+  revalidatePath("/student");
+  revalidatePath("/student/profile");
+  return { ok: true, message: "Saved." };
+}
+
+export async function getSavedJobIds() {
+  const student = await requireUser(Role.STUDENT);
+  const rows = await prisma.savedJob.findMany({
+    where: { studentId: student.id },
+    select: { jobId: true },
+  });
+  return new Set(rows.map((r) => r.jobId));
+}
+
+export async function getSavedJobs() {
+  const student = await requireUser(Role.STUDENT);
+
+  return prisma.savedJob.findMany({
+    where: { studentId: student.id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      job: {
+        select: {
+          id: true,
+          title: true,
+          location: true,
+          salary: true,
+          employment: true,
+          company: { select: { name: true, companyName: true } },
+        },
+      },
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Fellow applicants — visible only to students who've applied themselves
+ * ------------------------------------------------------------------ */
+
+export async function getFellowApplicants(jobId: string) {
+  const student = await requireUser(Role.STUDENT);
+
+  // Gated behind having applied yourself — nobody can browse a job's
+  // applicant list without having skin in the game.
+  const applied = await prisma.application.findUnique({
+    where: { jobId_studentId: { jobId, studentId: student.id } },
+    select: { id: true },
+  });
+  if (!applied) return [];
+
+  const others = await prisma.application.findMany({
+    where: { jobId, NOT: { studentId: student.id } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      student: { select: { id: true, name: true, headline: true } },
+    },
+  });
+
+  // Only name and headline travel here — never email, CV link, or their
+  // application status, so nobody's outcome leaks to their fellow applicants.
+  return others.map((o) => o.student);
+}
+
+/* ------------------------------------------------------------------ *
  * useFormState adapters (client forms need a (prevState, formData) shape)
  * ------------------------------------------------------------------ */
 
@@ -297,4 +469,8 @@ export async function createJobAction(_prev: ActionResult | null, formData: Form
 
 export async function applyToJobAction(_prev: ActionResult | null, formData: FormData) {
   return applyToJob(formData);
+}
+
+export async function updateProfileAction(_prev: ActionResult | null, formData: FormData) {
+  return updateProfile(formData);
 }

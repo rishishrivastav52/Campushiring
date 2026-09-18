@@ -72,7 +72,11 @@ export default async function CompanyDashboard() {
               {open.map((app) => (
                 <li key={app.id} className="flex flex-wrap items-start gap-x-6 gap-y-3 py-4">
                   <div className="min-w-[15rem] flex-1">
-                    <p className="text-[15px] font-medium">{app.student.name}</p>
+                    <p className="text-[15px] font-medium">
+                      <Link href={`/profile/${app.studentId}`} className="hover:text-signal hover:underline">
+                        {app.student.name}
+                      </Link>
+                    </p>
                     <p className="mt-0.5 text-[13px] text-mist">
                       {app.student.email} — applied for {app.job.title}
                     </p>
@@ -127,7 +131,9 @@ export default async function CompanyDashboard() {
                   {decided.map((app) => (
                     <tr key={app.id} className="text-[14px]">
                       <td className="py-3 pr-4">
-                        <span className="font-medium">{app.student.name}</span>
+                        <Link href={`/profile/${app.studentId}`} className="font-medium hover:text-signal hover:underline">
+                          {app.student.name}
+                        </Link>
                         <span className="ml-2 text-[13px] text-mist">{app.student.email}</span>
                       </td>
                       <td className="py-3 pr-4 text-mist">{app.job.title}</td>

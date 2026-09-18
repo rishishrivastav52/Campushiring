@@ -28,17 +28,21 @@ enum ApplicationStatus {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String
-  name        String
-  role        Role     @default(STUDENT)
-  companyName String?
-  headline    String?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String
+  role         Role     @default(STUDENT)
+  companyName  String?
+  headline     String?
+  bio          String?
+  skills       String?
+  profileViews Int      @default(0)
+  createdAt    DateTime @default(now())
 
   postedJobs   Job[]         @relation("PostedJobs")
   applications Application[]
+  savedJobs    SavedJob[]
 
   @@index([role])
 }
@@ -56,10 +60,26 @@ model Job {
   company   User   @relation("PostedJobs", fields: [companyId], references: [id], onDelete: Cascade)
 
   applications Application[]
+  savedBy      SavedJob[]
 
   @@index([companyId])
   @@index([location])
   @@index([createdAt])
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // A student can bookmark a given job only once.
+  @@unique([jobId, studentId])
+  @@index([studentId])
 }
 
 model Application {

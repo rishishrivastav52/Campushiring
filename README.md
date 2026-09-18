@@ -51,3 +51,23 @@ production — NextAuth derives it from the deployment URL.
 
 Create one company account and one student account from the landing page.
 Company publishes roles at `/company`; student searches and applies at `/student`.
+
+## New: profile, saved jobs, and email alerts
+
+- Students edit a headline, skills and bio at `/student/profile`, and can
+  bookmark roles from the job hub — saved jobs show up on that same page.
+- Companies can click a candidate's name from an application to see their
+  profile at `/profile/[id]`. Each open increments a private view counter
+  the student sees on their own profile page — never who looked, only how many.
+- If `RESEND_API_KEY` is set, students get an email when a company confirms
+  an interview or rejects their application. Sign up free at resend.com,
+  verify a sender, and paste the key into `.env.local` (and into Vercel's
+  Environment Variables for the live site). Leave it blank and the app just
+  skips sending — nothing else is affected.
+
+Because the schema changed (new fields + a `SavedJob` table), run this once
+after pulling the update, both locally and against your Vercel database:
+
+```bash
+npx prisma db push
+```
