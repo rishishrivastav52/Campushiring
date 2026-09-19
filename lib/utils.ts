@@ -18,6 +18,15 @@ export function formatDate(date: Date) {
   }).format(new Date(date));
 }
 
+export function formatDateTime(date: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(date));
+}
+
 // A plain keyword-overlap check between a student's comma-separated skills
 // and a job's text — not real matching intelligence, just simple string
 // containment, but it reads as a "match score" to anyone using the app.

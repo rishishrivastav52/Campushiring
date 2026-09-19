@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { ExternalLink, Mail, Trash2 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { deleteJob, getCompanyBoard, updateApplicationStatus } from "@/app/actions";
 import { CreateJobForm } from "@/components/CreateJobForm";
 import { StatusPill } from "@/components/StatusPill";
 import { TopBar } from "@/components/TopBar";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +16,29 @@ export default async function CompanyDashboard() {
 
   const open = applications.filter((a) => a.status === "APPLIED");
   const decided = applications.filter((a) => a.status !== "APPLIED");
+  const confirmed = applications.filter((a) => a.status === "INTERVIEW_CONFIRMED").length;
+
+  const stats = [
+    { label: "Live postings", value: jobs.length },
+    { label: "Total applicants", value: applications.length },
+    { label: "Waiting on you", value: open.length },
+    { label: "Interviews confirmed", value: confirmed },
+  ];
 
   return (
     <>
       <TopBar who={session?.user?.name ?? "Company"} context="Hiring dashboard" />
 
       <main className="mx-auto max-w-5xl space-y-10 px-5 py-8">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {stats.map((s) => (
+            <div key={s.label} className="panel p-4">
+              <p className="font-display text-[22px] font-semibold">{s.value}</p>
+              <p className="mt-0.5 text-[13px] text-mist">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
         <CreateJobForm />
 
         <section>
@@ -81,21 +98,38 @@ export default async function CompanyDashboard() {
                       {app.student.email} — applied for {app.job.title}
                     </p>
                     {app.note && <p className="mt-1.5 text-[13px] text-paper/80">{app.note}</p>}
-                    <a
-                      href={app.cvUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-signal hover:underline"
-                    >
-                      Open CV
-                      <ExternalLink className="h-3 w-3" aria-hidden />
-                    </a>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <a
+                        href={app.cvUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-signal hover:underline"
+                      >
+                        Open CV
+                        <ExternalLink className="h-3 w-3" aria-hidden />
+                      </a>
+                      <a
+                        href={`mailto:${app.student.email}?subject=${encodeURIComponent(`Your application for ${app.job.title}`)}`}
+                        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-mist hover:text-paper"
+                      >
+                        <Mail className="h-3 w-3" aria-hidden />
+                        Email candidate
+                      </a>
+                    </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <form action={updateApplicationStatus}>
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <form action={updateApplicationStatus} className="flex flex-wrap items-end gap-2">
                       <input type="hidden" name="applicationId" value={app.id} />
                       <input type="hidden" name="status" value="INTERVIEW_CONFIRMED" />
+                      <div>
+                        <label className="label" htmlFor={`date-${app.id}`}>Date</label>
+                        <input id={`date-${app.id}`} type="date" name="interviewDate" required className="field w-36" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor={`time-${app.id}`}>Time</label>
+                        <input id={`time-${app.id}`} type="time" name="interviewTime" required className="field w-28" />
+                      </div>
                       <button type="submit" className="btn-ghost border-go/50 text-go hover:bg-go/10">
                         Confirm interview
                       </button>
@@ -124,6 +158,7 @@ export default async function CompanyDashboard() {
                     <th className="py-2.5 pr-4 font-medium">Candidate</th>
                     <th className="py-2.5 pr-4 font-medium">Role</th>
                     <th className="py-2.5 pr-4 font-medium">Status</th>
+                    <th className="py-2.5 pr-4 font-medium">When</th>
                     <th className="py-2.5 font-medium">Change</th>
                   </tr>
                 </thead>
@@ -140,18 +175,25 @@ export default async function CompanyDashboard() {
                       <td className="py-3 pr-4">
                         <StatusPill status={app.status} />
                       </td>
+                      <td className="py-3 pr-4 text-mist">
+                        {app.status === "INTERVIEW_CONFIRMED" && app.interviewAt ? formatDateTime(app.interviewAt) : "—"}
+                      </td>
                       <td className="py-3">
-                        <form action={updateApplicationStatus}>
-                          <input type="hidden" name="applicationId" value={app.id} />
-                          <input
-                            type="hidden"
-                            name="status"
-                            value={app.status === "REJECTED" ? "INTERVIEW_CONFIRMED" : "REJECTED"}
-                          />
-                          <button type="submit" className="btn-ghost">
-                            {app.status === "REJECTED" ? "Confirm interview" : "Reject"}
-                          </button>
-                        </form>
+                        {app.status === "REJECTED" ? (
+                          <form action={updateApplicationStatus} className="flex flex-wrap items-end gap-2">
+                            <input type="hidden" name="applicationId" value={app.id} />
+                            <input type="hidden" name="status" value="INTERVIEW_CONFIRMED" />
+                            <input type="date" name="interviewDate" required className="field w-32" aria-label="Interview date" />
+                            <input type="time" name="interviewTime" required className="field w-24" aria-label="Interview time" />
+                            <button type="submit" className="btn-ghost">Confirm interview</button>
+                          </form>
+                        ) : (
+                          <form action={updateApplicationStatus}>
+                            <input type="hidden" name="applicationId" value={app.id} />
+                            <input type="hidden" name="status" value="REJECTED" />
+                            <button type="submit" className="btn-ghost">Reject</button>
+                          </form>
+                        )}
                       </td>
                     </tr>
                   ))}

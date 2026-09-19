@@ -108,9 +108,10 @@ export async function deleteJob(formData: FormData): Promise<ActionResult> {
  * 2. FilterJobs — a student searches by title or location
  * ------------------------------------------------------------------ */
 
-export async function filterJobs(query?: string, location?: string) {
+export async function filterJobs(query?: string, location?: string, employment?: string) {
   const q = (query || "").trim();
   const loc = (location || "").trim();
+  const emp = (employment || "").trim();
 
   const where: any = { AND: [] as any[] };
   if (q) {
@@ -124,6 +125,9 @@ export async function filterJobs(query?: string, location?: string) {
   }
   if (loc) {
     where.AND.push({ location: { contains: loc, mode: "insensitive" } });
+  }
+  if (emp && emp !== "Any") {
+    where.AND.push({ employment: emp });
   }
 
   return prisma.job.findMany({
@@ -202,6 +206,20 @@ export async function updateApplicationStatus(formData: FormData): Promise<Actio
   const status = allowed[raw];
   if (!status) return { ok: false, message: "Unknown status." };
 
+  let interviewAt: Date | null = null;
+  if (status === ApplicationStatus.INTERVIEW_CONFIRMED) {
+    const dateStr = String(formData.get("interviewDate") || "");
+    const timeStr = String(formData.get("interviewTime") || "");
+    if (!dateStr || !timeStr) {
+      return { ok: false, message: "Pick a date and time for the interview." };
+    }
+    const combined = new Date(`${dateStr}T${timeStr}`);
+    if (Number.isNaN(combined.getTime())) {
+      return { ok: false, message: "That date and time don't look valid." };
+    }
+    interviewAt = combined;
+  }
+
   // Looked up first (rather than a blind updateMany) so we have the
   // candidate's email and the job title on hand to send the notification —
   // the nested job.companyId filter still keeps this scoped to the
@@ -219,12 +237,20 @@ export async function updateApplicationStatus(formData: FormData): Promise<Actio
     return { ok: false, message: "That application is not on one of your postings." };
   }
 
-  await prisma.application.update({ where: { id: application.id }, data: { status } });
+  await prisma.application.update({
+    where: { id: application.id },
+    data: {
+      status,
+      // Clears any previously set slot the moment a candidate is un-confirmed
+      // or rejected, so a stale interview time never lingers on the record.
+      interviewAt: status === ApplicationStatus.INTERVIEW_CONFIRMED ? interviewAt : null,
+    },
+  });
 
   if (status === ApplicationStatus.INTERVIEW_CONFIRMED || status === ApplicationStatus.REJECTED) {
     // Fire-and-forget: email is a nice-to-have, so a slow or failed send
     // should never hold up or break the status update itself.
-    void sendStatusEmail(application.student.email, application.job.title, status);
+    void sendStatusEmail(application.student.email, application.job.title, status, interviewAt);
   }
 
   revalidatePath("/company");
@@ -263,6 +289,7 @@ export async function getCompanyBoard() {
         status: true,
         cvUrl: true,
         note: true,
+        interviewAt: true,
         createdAt: true,
         studentId: true,
         job: { select: { id: true, title: true, location: true } },
@@ -284,6 +311,7 @@ export async function getMyApplications() {
       id: true,
       status: true,
       cvUrl: true,
+      interviewAt: true,
       createdAt: true,
       updatedAt: true,
       job: {
@@ -309,6 +337,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   const headline = String(formData.get("headline") || "").trim();
   const bio = String(formData.get("bio") || "").trim();
   const skills = String(formData.get("skills") || "").trim();
+  const experience = String(formData.get("experience") || "").trim();
 
   await prisma.user.update({
     where: { id: student.id },
@@ -316,6 +345,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
       headline: headline || null,
       bio: bio || null,
       skills: skills || null,
+      experience: experience || null,
     },
   });
 
@@ -334,6 +364,7 @@ export async function getMyProfile() {
       headline: true,
       bio: true,
       skills: true,
+      experience: true,
       profileViews: true,
     },
   });
@@ -354,6 +385,7 @@ export async function viewStudentProfile(studentId: string) {
       headline: true,
       bio: true,
       skills: true,
+      experience: true,
     },
   });
 

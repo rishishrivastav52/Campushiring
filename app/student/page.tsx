@@ -7,19 +7,20 @@ import { ApplyForm } from "@/components/ApplyForm";
 import { SaveJobButton } from "@/components/SaveJobButton";
 import { StatusPill } from "@/components/StatusPill";
 import { TopBar } from "@/components/TopBar";
-import { cn, formatDate, skillMatchPercent } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, skillMatchPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: { q?: string; location?: string } };
+type Props = { searchParams: { q?: string; location?: string; employment?: string } };
 
 export default async function StudentHub({ searchParams }: Props) {
   const session = await getServerSession(authOptions);
   const q = searchParams?.q ?? "";
   const location = searchParams?.location ?? "";
+  const employment = searchParams?.employment ?? "";
 
   const [jobs, applications, savedJobIds, profile] = await Promise.all([
-    filterJobs(q, location),
+    filterJobs(q, location, employment),
     getMyApplications(),
     getSavedJobIds(),
     getMyProfile(),
@@ -35,11 +36,29 @@ export default async function StudentHub({ searchParams }: Props) {
   );
   const fellowApplicantsByJob = new Map(fellowEntries);
 
+  const confirmedCount = applications.filter((a) => a.status === "INTERVIEW_CONFIRMED").length;
+  const pendingCount = applications.filter((a) => a.status === "APPLIED").length;
+  const stats = [
+    { label: "Applications sent", value: applications.length },
+    { label: "Awaiting reply", value: pendingCount },
+    { label: "Interviews confirmed", value: confirmedCount },
+    { label: "Saved jobs", value: savedJobIds.size },
+  ];
+
   return (
     <>
       <TopBar who={session?.user?.name ?? "Student"} context="Job hub" />
 
       <main className="mx-auto max-w-5xl space-y-10 px-5 py-8">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {stats.map((s) => (
+            <div key={s.label} className="panel p-4">
+              <p className="font-display text-[22px] font-semibold">{s.value}</p>
+              <p className="mt-0.5 text-[13px] text-mist">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
         <div className="flex justify-end">
           <Link href="/student/profile" className="btn-ghost">
             <UserRound className="h-3.5 w-3.5" aria-hidden />
@@ -68,11 +87,18 @@ export default async function StudentHub({ searchParams }: Props) {
               placeholder="Location"
               aria-label="Filter by location"
             />
+            <select name="employment" defaultValue={employment} className="field sm:max-w-[10rem]" aria-label="Filter by job type">
+              <option value="">Any type</option>
+              <option value="Full-time">Full-time</option>
+              <option value="Internship">Internship</option>
+              <option value="Contract">Contract</option>
+              <option value="Part-time">Part-time</option>
+            </select>
             <button type="submit" className="btn-primary shrink-0">
               Search
             </button>
           </div>
-          {(q || location) && (
+          {(q || location || employment) && (
             <p className="mt-3 text-[13px] text-mist">
               {jobs.length} {jobs.length === 1 ? "role" : "roles"} matched. <a href="/student" className="text-signal hover:underline">Clear filters</a>
             </p>
@@ -176,6 +202,7 @@ export default async function StudentHub({ searchParams }: Props) {
                     <th className="py-2.5 pr-4 font-medium">Company</th>
                     <th className="py-2.5 pr-4 font-medium">Salary</th>
                     <th className="py-2.5 pr-4 font-medium">Status</th>
+                    <th className="py-2.5 pr-4 font-medium">Interview</th>
                     <th className="py-2.5 pr-4 font-medium">Updated</th>
                     <th className="py-2.5 font-medium">CV</th>
                   </tr>
@@ -188,6 +215,9 @@ export default async function StudentHub({ searchParams }: Props) {
                       <td className="py-3 pr-4 text-mist">{app.job.salary}</td>
                       <td className="py-3 pr-4">
                         <StatusPill status={app.status} />
+                      </td>
+                      <td className="py-3 pr-4 text-mist">
+                        {app.status === "INTERVIEW_CONFIRMED" && app.interviewAt ? formatDateTime(app.interviewAt) : "—"}
                       </td>
                       <td className="py-3 pr-4 text-mist">{formatDate(app.updatedAt)}</td>
                       <td className="py-3">

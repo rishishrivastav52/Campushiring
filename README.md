@@ -52,6 +52,30 @@ production — NextAuth derives it from the deployment URL.
 Create one company account and one student account from the landing page.
 Company publishes roles at `/company`; student searches and applies at `/student`.
 
+## New: auto sign-in after signup, and dashboard stats
+
+- Creating an account now signs you straight in — no more switching to the
+  sign-in tab and retyping your email and password.
+- Both dashboards show a quick stats row at the top (applications sent,
+  interviews confirmed, live postings, etc.) — built entirely from data
+  already being loaded, so no new database queries.
+- Companies can now click **Email candidate** next to a CV link to open a
+  pre-addressed email to that applicant.
+
+No schema change this time — just run `npm install` isn't even needed,
+copy the files over and restart `npm run dev`.
+
+## New: interview scheduling, experience, and job-type filter
+
+- When a company clicks **Confirm interview**, they now pick a date and time
+  first. The student sees that slot on their applications table, and it's
+  included in the email notification if `RESEND_API_KEY` is set.
+- Students can add a free-text "What you were doing before" field on their
+  profile — past internships, jobs, or projects, kept as one simple text box
+  rather than a structured multi-entry history.
+- The student job search now has a job-type dropdown (Full-time, Internship,
+  Contract, Part-time) alongside the existing text and location search.
+
 ## New: profile, saved jobs, and email alerts
 
 - Students edit a headline, skills and bio at `/student/profile`, and can
@@ -64,8 +88,12 @@ Company publishes roles at `/company`; student searches and applies at `/student
   verify a sender, and paste the key into `.env.local` (and into Vercel's
   Environment Variables for the live site). Leave it blank and the app just
   skips sending — nothing else is affected.
+- Applicants to the same job can see each other's name and headline (only
+  once they've applied themselves), and job listings show a skill-match
+  percentage badge based on the student's saved skills.
 
-Because the schema changed (new fields + a `SavedJob` table), run this once
+Because the schema has changed across these updates (new fields on `User`,
+`interviewAt` on `Application`, plus the `SavedJob` table), run this once
 after pulling the update, both locally and against your Vercel database:
 
 ```bash

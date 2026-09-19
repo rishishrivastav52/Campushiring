@@ -5,9 +5,16 @@
 // working exactly as before, it just skips the email. That means the feature
 // is fully optional and never blocks a signup, application, or deploy.
 
+import { formatDateTime } from "@/lib/utils";
+
 type StatusEmailKind = "INTERVIEW_CONFIRMED" | "REJECTED";
 
-export async function sendStatusEmail(to: string, jobTitle: string, kind: StatusEmailKind) {
+export async function sendStatusEmail(
+  to: string,
+  jobTitle: string,
+  kind: StatusEmailKind,
+  interviewAt?: Date | null,
+) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
@@ -16,7 +23,9 @@ export async function sendStatusEmail(to: string, jobTitle: string, kind: Status
 
   const text =
     kind === "INTERVIEW_CONFIRMED"
-      ? `Good news — the company has confirmed an interview for "${jobTitle}". Sign in to CampusHiring to see the details.`
+      ? `Good news — the company has confirmed an interview for "${jobTitle}"${
+          interviewAt ? ` on ${formatDateTime(interviewAt)}` : ""
+        }. Sign in to CampusHiring to see the details.`
       : `The company has decided not to move forward with your application for "${jobTitle}". Keep applying — new roles are posted regularly.`;
 
   try {

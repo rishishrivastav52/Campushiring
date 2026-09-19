@@ -48,7 +48,14 @@ export default async function CandidateProfilePage({ params }: { params: { id: s
 
           {student.bio && <p className="mt-5 max-w-[60ch] text-[14px] leading-relaxed text-paper/80">{student.bio}</p>}
 
-          {!student.headline && !student.bio && skills.length === 0 && (
+          {student.experience && (
+            <div className="mt-5">
+              <p className="text-[13px] font-medium text-mist">Before this</p>
+              <p className="mt-1 max-w-[60ch] text-[14px] leading-relaxed text-paper/80">{student.experience}</p>
+            </div>
+          )}
+
+          {!student.headline && !student.bio && !student.experience && skills.length === 0 && (
             <p className="mt-5 text-[14px] text-mist">This candidate hasn't filled in their profile yet.</p>
           )}
         </div>

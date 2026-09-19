@@ -1,20 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { registerUserAction } from "@/app/actions";
+import { registerUser } from "@/app/actions";
 import { cn } from "@/lib/utils";
-
-function Submit({ children }: { children: React.ReactNode }) {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} className="btn-primary w-full">
-      {pending ? "Working…" : children}
-    </button>
-  );
-}
 
 export function AuthPanel() {
   const router = useRouter();
@@ -22,7 +12,8 @@ export function AuthPanel() {
   const [role, setRole] = useState<"STUDENT" | "COMPANY">("STUDENT");
   const [signInError, setSignInError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
-  const [state, formAction] = useFormState(registerUserAction, null);
+  const [signUpError, setSignUpError] = useState("");
+  const [signingUp, setSigningUp] = useState(false);
 
   async function handleSignIn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,6 +32,39 @@ export function AuthPanel() {
       setSignInError("That email and password do not match an account.");
       return;
     }
+    router.refresh();
+    router.push("/");
+  }
+
+  async function handleSignUp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSignUpError("");
+    setSigningUp(true);
+
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email") || "");
+    const password = String(data.get("password") || "");
+
+    const result = await registerUser(data);
+    if (!result.ok) {
+      setSigningUp(false);
+      setSignUpError(result.message);
+      return;
+    }
+
+    // Account created — sign them straight in with the same credentials
+    // instead of sending them back to a second form to retype everything.
+    const signInResult = await signIn("credentials", { redirect: false, email, password });
+    setSigningUp(false);
+
+    if (signInResult?.error) {
+      // Very unlikely right after a successful signup, but don't leave them
+      // stuck if it happens — drop them on the sign-in tab instead.
+      setMode("signin");
+      setSignInError("Account created — sign in below to continue.");
+      return;
+    }
+
     router.refresh();
     router.push("/");
   }
@@ -83,7 +107,7 @@ export function AuthPanel() {
           </button>
         </form>
       ) : (
-        <form action={formAction} className="space-y-4">
+        <form onSubmit={handleSignUp} className="space-y-4">
           <div>
             <label className="label" htmlFor="su-role">
               I am here to
@@ -123,8 +147,10 @@ export function AuthPanel() {
             </label>
             <input id="su-password" name="password" type="password" required minLength={6} className="field" placeholder="At least 6 characters" />
           </div>
-          {state && <p className={cn("text-[13px]", state.ok ? "text-go" : "text-stop")}>{state.message}</p>}
-          <Submit>Create account</Submit>
+          {signUpError && <p className="text-[13px] text-stop">{signUpError}</p>}
+          <button type="submit" disabled={signingUp} className="btn-primary w-full">
+            {signingUp ? "Creating account…" : "Create account"}
+          </button>
         </form>
       )}
     </div>

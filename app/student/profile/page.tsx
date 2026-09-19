@@ -36,7 +36,12 @@ export default async function StudentProfilePage() {
         </div>
 
         <section className="panel p-5">
-          <ProfileForm headline={profile?.headline ?? null} bio={profile?.bio ?? null} skills={profile?.skills ?? null} />
+          <ProfileForm
+            headline={profile?.headline ?? null}
+            bio={profile?.bio ?? null}
+            skills={profile?.skills ?? null}
+            experience={profile?.experience ?? null}
+          />
         </section>
 
         <section>

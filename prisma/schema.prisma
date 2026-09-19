@@ -37,6 +37,7 @@ model User {
   headline     String?
   bio          String?
   skills       String?
+  experience   String?
   profileViews Int      @default(0)
   createdAt    DateTime @default(now())
 
@@ -83,12 +84,13 @@ model SavedJob {
 }
 
 model Application {
-  id        String            @id @default(cuid())
-  status    ApplicationStatus @default(APPLIED)
-  cvUrl     String
-  note      String?
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  id          String            @id @default(cuid())
+  status      ApplicationStatus @default(APPLIED)
+  cvUrl       String
+  note        String?
+  interviewAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   jobId String
   job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)

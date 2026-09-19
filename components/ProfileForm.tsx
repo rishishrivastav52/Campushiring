@@ -17,9 +17,10 @@ type Props = {
   headline: string | null;
   bio: string | null;
   skills: string | null;
+  experience: string | null;
 };
 
-export function ProfileForm({ headline, bio, skills }: Props) {
+export function ProfileForm({ headline, bio, skills, experience }: Props) {
   const [state, formAction] = useFormState(updateProfileAction, null);
 
   return (
@@ -53,6 +54,17 @@ export function ProfileForm({ headline, bio, skills }: Props) {
           defaultValue={bio ?? ""}
           className="field"
           placeholder="A few lines a company would want to read before an interview."
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="experience">What you were doing before</label>
+        <textarea
+          id="experience"
+          name="experience"
+          rows={4}
+          defaultValue={experience ?? ""}
+          className="field"
+          placeholder="Past internships, jobs, or projects — one or two lines each is plenty."
         />
       </div>
       <div className="flex items-center gap-4">
