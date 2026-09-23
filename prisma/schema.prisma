@@ -23,6 +23,7 @@ enum Role {
 
 enum ApplicationStatus {
   APPLIED
+  SHORTLISTED
   INTERVIEW_CONFIRMED
   REJECTED
 }
@@ -38,6 +39,7 @@ model User {
   bio          String?
   skills       String?
   experience   String?
+  hometown     String?
   profileViews Int      @default(0)
   createdAt    DateTime @default(now())
 

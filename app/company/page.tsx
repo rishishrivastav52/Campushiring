@@ -15,7 +15,8 @@ export default async function CompanyDashboard() {
   const { jobs, applications } = await getCompanyBoard();
 
   const open = applications.filter((a) => a.status === "APPLIED");
-  const decided = applications.filter((a) => a.status !== "APPLIED");
+  const shortlisted = applications.filter((a) => a.status === "SHORTLISTED");
+  const decided = applications.filter((a) => a.status === "INTERVIEW_CONFIRMED" || a.status === "REJECTED");
   const confirmed = applications.filter((a) => a.status === "INTERVIEW_CONFIRMED").length;
 
   const stats = [
@@ -134,6 +135,73 @@ export default async function CompanyDashboard() {
                         Confirm interview
                       </button>
                     </form>
+                    <div className="flex gap-2">
+                      <form action={updateApplicationStatus}>
+                        <input type="hidden" name="applicationId" value={app.id} />
+                        <input type="hidden" name="status" value="SHORTLISTED" />
+                        <button type="submit" className="btn-ghost border-sky-400/50 text-sky-400 hover:bg-sky-400/10">
+                          Shortlist
+                        </button>
+                      </form>
+                      <form action={updateApplicationStatus}>
+                        <input type="hidden" name="applicationId" value={app.id} />
+                        <input type="hidden" name="status" value="REJECTED" />
+                        <button type="submit" className="btn-ghost border-stop/50 text-stop hover:bg-stop/10">
+                          Reject
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {shortlisted.length > 0 && (
+          <section>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-display text-[17px] font-semibold">Shortlisted — decide when ready</h2>
+              <p className="text-[13px] text-mist">{shortlisted.length} on hold</p>
+            </div>
+            <ul className="divide-y divide-line border-y border-line">
+              {shortlisted.map((app) => (
+                <li key={app.id} className="flex flex-wrap items-start gap-x-6 gap-y-3 py-4">
+                  <div className="min-w-[15rem] flex-1">
+                    <p className="text-[15px] font-medium">
+                      <Link href={`/profile/${app.studentId}`} className="hover:text-signal hover:underline">
+                        {app.student.name}
+                      </Link>
+                    </p>
+                    <p className="mt-0.5 text-[13px] text-mist">
+                      {app.student.email} — applied for {app.job.title}
+                    </p>
+                    <a
+                      href={app.cvUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-signal hover:underline"
+                    >
+                      Open CV
+                      <ExternalLink className="h-3 w-3" aria-hidden />
+                    </a>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <form action={updateApplicationStatus} className="flex flex-wrap items-end gap-2">
+                      <input type="hidden" name="applicationId" value={app.id} />
+                      <input type="hidden" name="status" value="INTERVIEW_CONFIRMED" />
+                      <div>
+                        <label className="label" htmlFor={`sdate-${app.id}`}>Date</label>
+                        <input id={`sdate-${app.id}`} type="date" name="interviewDate" required className="field w-36" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor={`stime-${app.id}`}>Time</label>
+                        <input id={`stime-${app.id}`} type="time" name="interviewTime" required className="field w-28" />
+                      </div>
+                      <button type="submit" className="btn-ghost border-go/50 text-go hover:bg-go/10">
+                        Confirm interview
+                      </button>
+                    </form>
                     <form action={updateApplicationStatus}>
                       <input type="hidden" name="applicationId" value={app.id} />
                       <input type="hidden" name="status" value="REJECTED" />
@@ -145,8 +213,8 @@ export default async function CompanyDashboard() {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
+          </section>
+        )}
 
         {decided.length > 0 && (
           <section>

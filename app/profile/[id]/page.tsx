@@ -35,6 +35,7 @@ export default async function CandidateProfilePage({ params }: { params: { id: s
           <h1 className="font-display text-[22px] font-semibold tracking-tight">{student.name}</h1>
           {student.headline && <p className="mt-1 text-[14px] text-mist">{student.headline}</p>}
           <p className="mt-1 text-[13px] text-mist">{student.email}</p>
+          {student.hometown && <p className="mt-1 text-[13px] text-mist">From {student.hometown}</p>}
 
           {skills.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-2">

@@ -8,6 +8,7 @@ import { ApplicationStatus, Role } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendStatusEmail } from "@/lib/email";
+import { skillMatchPercent } from "@/lib/utils";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -202,6 +203,7 @@ export async function updateApplicationStatus(formData: FormData): Promise<Actio
     INTERVIEW_CONFIRMED: ApplicationStatus.INTERVIEW_CONFIRMED,
     REJECTED: ApplicationStatus.REJECTED,
     APPLIED: ApplicationStatus.APPLIED,
+    SHORTLISTED: ApplicationStatus.SHORTLISTED,
   };
   const status = allowed[raw];
   if (!status) return { ok: false, message: "Unknown status." };
@@ -338,6 +340,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   const bio = String(formData.get("bio") || "").trim();
   const skills = String(formData.get("skills") || "").trim();
   const experience = String(formData.get("experience") || "").trim();
+  const hometown = String(formData.get("hometown") || "").trim();
 
   await prisma.user.update({
     where: { id: student.id },
@@ -346,6 +349,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
       bio: bio || null,
       skills: skills || null,
       experience: experience || null,
+      hometown: hometown || null,
     },
   });
 
@@ -365,6 +369,7 @@ export async function getMyProfile() {
       bio: true,
       skills: true,
       experience: true,
+      hometown: true,
       profileViews: true,
     },
   });
@@ -386,6 +391,7 @@ export async function viewStudentProfile(studentId: string) {
       bio: true,
       skills: true,
       experience: true,
+      hometown: true,
     },
   });
 
@@ -505,4 +511,42 @@ export async function applyToJobAction(_prev: ActionResult | null, formData: For
 
 export async function updateProfileAction(_prev: ActionResult | null, formData: FormData) {
   return updateProfile(formData);
+}
+
+/* ------------------------------------------------------------------ *
+ * Suggested jobs — same area as the student's hometown, and at least a
+ * 50% overlap between their stored skills and the job's text
+ * ------------------------------------------------------------------ */
+
+export async function getSuggestedJobs() {
+  const student = await requireUser(Role.STUDENT);
+
+  const profile = await prisma.user.findUnique({
+    where: { id: student.id },
+    select: { hometown: true, skills: true },
+  });
+  if (!profile?.hometown) return [];
+
+  const candidates = await prisma.job.findMany({
+    where: {
+      location: { contains: profile.hometown, mode: "insensitive" },
+      applications: { none: { studentId: student.id } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      title: true,
+      location: true,
+      salary: true,
+      employment: true,
+      company: { select: { name: true, companyName: true } },
+      description: true,
+    },
+  });
+
+  return candidates
+    .map((job) => ({ ...job, match: skillMatchPercent(profile.skills, `${job.title} ${job.description}`) }))
+    .filter((job) => job.match !== null && job.match >= 50)
+    .sort((a, b) => (b.match ?? 0) - (a.match ?? 0));
 }

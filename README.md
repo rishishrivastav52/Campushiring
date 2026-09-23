@@ -52,6 +52,23 @@ production — NextAuth derives it from the deployment URL.
 Create one company account and one student account from the landing page.
 Company publishes roles at `/company`; student searches and applies at `/student`.
 
+## New: shortlisting, hometown, and suggested jobs
+
+- Companies can now **Shortlist** an applicant instead of deciding right
+  away — shortlisted candidates move to their own section, where the
+  company can confirm an interview (with date/time) or reject them
+  whenever they're ready.
+- Students can add "Where you're from" on their profile.
+- If that's set, a **Suggested for you** section appears on the student
+  job hub: roles in that same area where the student's stored skills are
+  at least a 50% match to the job's text.
+
+This changes the schema again (`SHORTLISTED` status, `hometown` field), so run:
+
+```bash
+npx prisma db push
+```
+
 ## New: auto sign-in after signup, and dashboard stats
 
 - Creating an account now signs you straight in — no more switching to the

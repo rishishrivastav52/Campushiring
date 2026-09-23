@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { ExternalLink, Search, UserRound } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { filterJobs, getFellowApplicants, getMyApplications, getMyProfile, getSavedJobIds } from "@/app/actions";
+import { filterJobs, getFellowApplicants, getMyApplications, getMyProfile, getSavedJobIds, getSuggestedJobs } from "@/app/actions";
 import { ApplyForm } from "@/components/ApplyForm";
 import { SaveJobButton } from "@/components/SaveJobButton";
 import { StatusPill } from "@/components/StatusPill";
@@ -19,11 +19,12 @@ export default async function StudentHub({ searchParams }: Props) {
   const location = searchParams?.location ?? "";
   const employment = searchParams?.employment ?? "";
 
-  const [jobs, applications, savedJobIds, profile] = await Promise.all([
+  const [jobs, applications, savedJobIds, profile, suggested] = await Promise.all([
     filterJobs(q, location, employment),
     getMyApplications(),
     getSavedJobIds(),
     getMyProfile(),
+    getSuggestedJobs(),
   ]);
   const appliedJobIds = new Set(applications.map((a) => a.job.id));
 
@@ -47,7 +48,7 @@ export default async function StudentHub({ searchParams }: Props) {
 
   return (
     <>
-      <TopBar who={session?.user?.name ?? "Student"} context="Job hub" />
+      <TopBar who={session?.user?.name ?? "Student"} context="Job hub" profileHref="/student/profile" />
 
       <main className="mx-auto max-w-5xl space-y-10 px-5 py-8">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -57,13 +58,6 @@ export default async function StudentHub({ searchParams }: Props) {
               <p className="mt-0.5 text-[13px] text-mist">{s.label}</p>
             </div>
           ))}
-        </div>
-
-        <div className="flex justify-end">
-          <Link href="/student/profile" className="btn-ghost">
-            <UserRound className="h-3.5 w-3.5" aria-hidden />
-            Your profile
-          </Link>
         </div>
 
         {/* Search is the primary job of this screen, so it leads. */}
@@ -104,6 +98,39 @@ export default async function StudentHub({ searchParams }: Props) {
             </p>
           )}
         </form>
+
+        {profile?.hometown && (
+          <section>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-display text-[17px] font-semibold">Suggested for you</h2>
+              <p className="text-[13px] text-mist">Near {profile.hometown} · 50%+ skill match</p>
+            </div>
+            {suggested.length === 0 ? (
+              <p className="panel p-5 text-[14px] text-mist">
+                Nothing strong enough to suggest yet. A role will be suggested based on your town and skills.
+              </p>
+            ) : (
+              <ul className="divide-y divide-line border-y border-line">
+                {suggested.map((job) => (
+                  <li key={job.id} className="flex flex-wrap items-center justify-between gap-3 py-3.5">
+                    <div>
+                      <p className="text-[15px] font-medium">{job.title}</p>
+                      <p className="mt-0.5 text-[13px] text-mist">
+                        {job.company.companyName || job.company.name} — {job.location} — {job.salary}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-full border border-go/40 bg-go/10 px-2 py-0.5 text-[12px] font-medium text-go">
+                        {job.match}% match
+                      </span>
+                      <SaveJobButton jobId={job.id} saved={savedJobIds.has(job.id)} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         <section>
           <h2 className="mb-3 font-display text-[17px] font-semibold">Open roles</h2>

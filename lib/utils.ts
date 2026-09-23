@@ -8,6 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function statusLabel(status: string) {
   if (status === "INTERVIEW_CONFIRMED") return "Interview confirmed";
   if (status === "REJECTED") return "Not moving forward";
+  if (status === "SHORTLISTED") return "Shortlisted";
   return "Application received";
 }
 

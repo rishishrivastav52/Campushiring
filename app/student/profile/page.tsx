@@ -18,7 +18,10 @@ export default async function StudentProfilePage() {
 
       <main className="mx-auto max-w-3xl space-y-10 px-5 py-8">
         <div>
-          <Link href="/student" className="text-[13px] text-signal hover:underline">
+          <Link
+            href="/student"
+            className="inline-flex items-center gap-1 rounded-md border border-signal/40 bg-signal/10 px-3 py-1.5 text-[13px] font-medium text-signal hover:bg-signal/20"
+          >
             ← Back to job hub
           </Link>
           <h1 className="mt-2 font-display text-[22px] font-semibold tracking-tight">Your profile</h1>
@@ -41,6 +44,7 @@ export default async function StudentProfilePage() {
             bio={profile?.bio ?? null}
             skills={profile?.skills ?? null}
             experience={profile?.experience ?? null}
+            hometown={profile?.hometown ?? null}
           />
         </section>
 

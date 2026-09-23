@@ -18,9 +18,10 @@ type Props = {
   bio: string | null;
   skills: string | null;
   experience: string | null;
+  hometown: string | null;
 };
 
-export function ProfileForm({ headline, bio, skills, experience }: Props) {
+export function ProfileForm({ headline, bio, skills, experience, hometown }: Props) {
   const [state, formAction] = useFormState(updateProfileAction, null);
 
   return (
@@ -54,6 +55,16 @@ export function ProfileForm({ headline, bio, skills, experience }: Props) {
           defaultValue={bio ?? ""}
           className="field"
           placeholder="A few lines a company would want to read before an interview."
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="hometown">Where you're from</label>
+        <input
+          id="hometown"
+          name="hometown"
+          defaultValue={hometown ?? ""}
+          className="field"
+          placeholder="City, so we can suggest roles near you"
         />
       </div>
       <div>
