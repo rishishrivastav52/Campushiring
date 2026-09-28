@@ -13,7 +13,7 @@ function Toggle({ saved }: { saved: boolean }) {
       disabled={pending}
       aria-pressed={saved}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[13px] font-medium transition active:scale-95",
         saved ? "border-signal/50 bg-signal/10 text-signal" : "border-line text-mist hover:text-paper",
       )}
     >

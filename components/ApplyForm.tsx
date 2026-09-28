@@ -20,7 +20,7 @@ export function ApplyForm({ jobId, alreadyApplied }: { jobId: string; alreadyApp
   const done = alreadyApplied || Boolean(state?.ok);
 
   if (done) {
-    return <p className="text-[13px] text-go">Applied. Track the reply in your applications table below.</p>;
+    return <p className="text-[13px] text-go">Applied. Track the reply in your applications table on the job hub.</p>;
   }
 
   return (

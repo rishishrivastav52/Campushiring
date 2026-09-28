@@ -258,8 +258,8 @@ export default async function CompanyDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {decided.map((app) => (
-                    <tr key={app.id} className="text-[14px]">
+                  {decided.map((app, i) => (
+                    <tr key={app.id} className="animate-fade-in text-[14px]" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                       <td className="py-3 pr-4">
                         <Link href={`/profile/${app.studentId}`} className="font-medium hover:text-signal hover:underline">
                           {app.student.name}

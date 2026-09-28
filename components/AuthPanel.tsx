@@ -88,7 +88,7 @@ export function AuthPanel() {
       </div>
 
       {mode === "signin" ? (
-        <form onSubmit={handleSignIn} className="space-y-4">
+        <form onSubmit={handleSignIn} className="animate-fade-in space-y-4">
           <div>
             <label className="label" htmlFor="si-email">
               Email
@@ -107,7 +107,7 @@ export function AuthPanel() {
           </button>
         </form>
       ) : (
-        <form onSubmit={handleSignUp} className="space-y-4">
+        <form onSubmit={handleSignUp} className="animate-fade-in space-y-4">
           <div>
             <label className="label" htmlFor="su-role">
               I am here to

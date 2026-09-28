@@ -52,6 +52,30 @@ production — NextAuth derives it from the deployment URL.
 Create one company account and one student account from the landing page.
 Company publishes roles at `/company`; student searches and applies at `/student`.
 
+## New: more animations
+
+- Every page fades in on navigation; the landing page has a staggered
+  entrance and a slowly floating glow.
+- Sign-in / create-account forms fade when you switch tabs.
+- Status pills pop in; table rows fade in one after another.
+- Save and Like buttons give a press effect; feed posts highlight on hover.
+- Smooth scrolling (back-to-top, anchor jumps).
+- All motion is switched off for people who set "reduce motion" in their
+  operating system.
+
+CSS only — no schema change, no new dependency. Copy files, restart `npm run dev`.
+
+## New: apply from saved jobs, skeleton loaders, and more polish
+
+- Saved jobs (on your profile page) and Suggested jobs now have an Apply
+  form, and saved jobs can be un-saved right there.
+- Pages show a loading skeleton instantly while data loads.
+- The profile page has a Profile strength meter (5 fields, 20% each).
+- Jobs posted in the last 48 hours get a "New" badge.
+- A back-to-top button appears after scrolling.
+
+No schema change — copy files and restart `npm run dev`.
+
 ## New: feed, articles, likes, comments, and Open to work
 
 - `/feed` is a shared feed for students and companies. Post a short update,

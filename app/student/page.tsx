@@ -162,6 +162,9 @@ export default async function StudentHub({ searchParams }: Props) {
                       </span>
                       <SaveJobButton jobId={job.id} saved={savedJobIds.has(job.id)} />
                     </div>
+                    <div className="w-full">
+                      <ApplyForm jobId={job.id} alreadyApplied={appliedJobIds.has(job.id)} />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -187,6 +190,9 @@ export default async function StudentHub({ searchParams }: Props) {
                   <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
                     <h3 className="text-[16px] font-medium">{job.title}</h3>
                     <p className="text-[13px] text-mist">{job.company.companyName || job.company.name}</p>
+                    {Date.now() - new Date(job.createdAt).getTime() < 48 * 3600 * 1000 && (
+                      <span className="rounded-full bg-signal px-2 py-0.5 text-[11px] font-semibold text-ink">New</span>
+                    )}
                     {match !== null && match > 0 && (
                       <span
                         className={cn(
@@ -279,8 +285,8 @@ export default async function StudentHub({ searchParams }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {applications.map((app) => (
-                    <tr key={app.id} className="text-[14px]">
+                  {applications.map((app, i) => (
+                    <tr key={app.id} className="animate-fade-in text-[14px]" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                       <td className="py-3 pr-4 font-medium">{app.job.title}</td>
                       <td className="py-3 pr-4 text-mist">{app.job.company.companyName || app.job.company.name}</td>
                       <td className="py-3 pr-4 text-mist">{app.job.salary}</td>

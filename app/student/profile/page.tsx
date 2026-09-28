@@ -2,7 +2,9 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { Eye } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { getMyProfile, getSavedJobs } from "@/app/actions";
+import { getMyApplications, getMyProfile, getSavedJobs } from "@/app/actions";
+import { ApplyForm } from "@/components/ApplyForm";
+import { SaveJobButton } from "@/components/SaveJobButton";
 import { ProfileForm } from "@/components/ProfileForm";
 import { TopBar } from "@/components/TopBar";
 
@@ -10,7 +12,18 @@ export const dynamic = "force-dynamic";
 
 export default async function StudentProfilePage() {
   const session = await getServerSession(authOptions);
-  const [profile, saved] = await Promise.all([getMyProfile(), getSavedJobs()]);
+  const [profile, saved, applications] = await Promise.all([getMyProfile(), getSavedJobs(), getMyApplications()]);
+  const appliedJobIds = new Set(applications.map((a) => a.job.id));
+
+  const strengthFields = [
+    { label: "headline", done: !!profile?.headline },
+    { label: "skills", done: !!profile?.skills },
+    { label: "about you", done: !!profile?.bio },
+    { label: "past experience", done: !!profile?.experience },
+    { label: "hometown", done: !!profile?.hometown },
+  ];
+  const strengthPct = strengthFields.filter((f) => f.done).length * 20;
+  const missing = strengthFields.filter((f) => !f.done).map((f) => f.label);
 
   return (
     <>
@@ -38,6 +51,19 @@ export default async function StudentProfilePage() {
           </p>
         </div>
 
+        <div className="panel p-5">
+          <div className="flex items-baseline justify-between">
+            <p className="text-[14px] font-medium">Profile strength</p>
+            <p className="font-display text-[15px] font-semibold text-signal">{strengthPct}%</p>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-line">
+            <div className="animate-grow h-full rounded-full bg-signal" style={{ width: `${strengthPct}%` }} />
+          </div>
+          <p className="mt-2 text-[13px] text-mist">
+            {missing.length === 0 ? "All set — your profile is complete." : `Add ${missing.join(", ")} to strengthen it.`}
+          </p>
+        </div>
+
         <section className="panel p-5">
           <ProfileForm
             headline={profile?.headline ?? null}
@@ -62,16 +88,19 @@ export default async function StudentProfilePage() {
           ) : (
             <ul className="divide-y divide-line border-y border-line">
               {saved.map(({ id, job }) => (
-                <li key={id} className="flex flex-wrap items-center justify-between gap-3 py-3.5">
-                  <div>
-                    <p className="text-[15px] font-medium">{job.title}</p>
-                    <p className="mt-0.5 text-[13px] text-mist">
-                      {job.company.companyName || job.company.name} — {job.location} — {job.salary}
-                    </p>
+                <li key={id} className="py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[15px] font-medium">{job.title}</p>
+                      <p className="mt-0.5 text-[13px] text-mist">
+                        {job.company.companyName || job.company.name} — {job.location} — {job.salary}
+                      </p>
+                    </div>
+                    <SaveJobButton jobId={job.id} saved />
                   </div>
-                  <Link href="/student" className="btn-ghost">
-                    View in job hub
-                  </Link>
+                  <div className="mt-3">
+                    <ApplyForm jobId={job.id} alreadyApplied={appliedJobIds.has(job.id)} />
+                  </div>
                 </li>
               ))}
             </ul>

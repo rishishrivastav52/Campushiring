@@ -69,7 +69,7 @@ export default async function FeedPage() {
             return (
               <article
                 key={post.id}
-                className="panel animate-fade-up p-5"
+                className="panel animate-fade-up p-5 transition-colors hover:border-signal/30"
                 style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
               >
                 <header className="flex items-start gap-3">
@@ -112,7 +112,7 @@ export default async function FeedPage() {
                       type="submit"
                       aria-pressed={liked}
                       className={cn(
-                        "inline-flex items-center gap-1.5 font-medium transition-colors",
+                        "inline-flex items-center gap-1.5 font-medium transition active:scale-90",
                         liked ? "text-signal" : "text-mist hover:text-paper",
                       )}
                     >
