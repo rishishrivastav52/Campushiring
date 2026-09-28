@@ -26,6 +26,23 @@ body {
   }
 }
 
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out both;
+}
+.row-hover {
+  @apply -mx-2 rounded-md px-2 transition-colors hover:bg-slate1/50;
+}
+
 /* Shared primitives, kept here so page files stay readable. */
 @layer components {
   .field {
@@ -37,12 +54,12 @@ body {
   }
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-md bg-signal px-4 py-2
-           text-[14px] font-semibold text-ink transition-colors hover:bg-signal/85
-           disabled:cursor-not-allowed disabled:opacity-50;
+           text-[14px] font-semibold text-ink transition hover:bg-signal/85 active:scale-95
+           disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-md border border-line px-3 py-1.5
-           text-[13px] font-medium text-paper transition-colors hover:border-mist/50 hover:bg-slate1;
+           text-[13px] font-medium text-paper transition hover:border-mist/50 hover:bg-slate1 active:scale-95;
   }
   .panel {
     @apply rounded-lg border border-line bg-slate1/70;

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { ExternalLink, Mail, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Mail, Trash2 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { deleteJob, getCompanyBoard, updateApplicationStatus } from "@/app/actions";
+import { deleteJob, duplicateJob, getCompanyBoard, updateApplicationStatus } from "@/app/actions";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { CreateJobForm } from "@/components/CreateJobForm";
+import { LiveTimeAgo } from "@/components/LiveTimeAgo";
 import { StatusPill } from "@/components/StatusPill";
 import { TopBar } from "@/components/TopBar";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +34,15 @@ export default async function CompanyDashboard() {
 
       <main className="mx-auto max-w-5xl space-y-10 px-5 py-8">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="panel p-4">
-              <p className="font-display text-[22px] font-semibold">{s.value}</p>
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              className="panel animate-fade-up p-4 transition-colors hover:border-signal/30"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <p className="font-display text-[22px] font-semibold">
+                <AnimatedNumber value={s.value} />
+              </p>
               <p className="mt-0.5 text-[13px] text-mist">{s.label}</p>
             </div>
           ))}
@@ -54,8 +62,12 @@ export default async function CompanyDashboard() {
             </p>
           ) : (
             <ul className="divide-y divide-line border-y border-line">
-              {jobs.map((job) => (
-                <li key={job.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 py-3.5">
+              {jobs.map((job, i) => (
+                <li
+                  key={job.id}
+                  className="row-hover animate-fade-up flex flex-wrap items-center gap-x-6 gap-y-2 py-3.5"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
                   <div className="min-w-[14rem] flex-1">
                     <p className="text-[15px] font-medium">{job.title}</p>
                     <p className="mt-0.5 text-[13px] text-mist">
@@ -63,7 +75,14 @@ export default async function CompanyDashboard() {
                     </p>
                   </div>
                   <p className="text-[13px] text-mist">{job._count.applications} applicants</p>
-                  <p className="text-[13px] text-mist">Posted {formatDate(job.createdAt)}</p>
+                  <p className="text-[13px] text-mist">Posted <LiveTimeAgo date={job.createdAt} /></p>
+                  <form action={duplicateJob}>
+                    <input type="hidden" name="jobId" value={job.id} />
+                    <button type="submit" className="btn-ghost">
+                      <Copy className="h-3.5 w-3.5" aria-hidden />
+                      Duplicate
+                    </button>
+                  </form>
                   <form action={deleteJob}>
                     <input type="hidden" name="jobId" value={job.id} />
                     <button type="submit" className="btn-ghost hover:border-stop/60 hover:text-stop">
@@ -87,8 +106,12 @@ export default async function CompanyDashboard() {
             <p className="panel p-5 text-[14px] text-mist">Nothing in the queue. New applications land here.</p>
           ) : (
             <ul className="divide-y divide-line border-y border-line">
-              {open.map((app) => (
-                <li key={app.id} className="flex flex-wrap items-start gap-x-6 gap-y-3 py-4">
+              {open.map((app, i) => (
+                <li
+                  key={app.id}
+                  className="row-hover animate-fade-up flex flex-wrap items-start gap-x-6 gap-y-3 py-4"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
                   <div className="min-w-[15rem] flex-1">
                     <p className="text-[15px] font-medium">
                       <Link href={`/profile/${app.studentId}`} className="hover:text-signal hover:underline">
@@ -165,8 +188,12 @@ export default async function CompanyDashboard() {
               <p className="text-[13px] text-mist">{shortlisted.length} on hold</p>
             </div>
             <ul className="divide-y divide-line border-y border-line">
-              {shortlisted.map((app) => (
-                <li key={app.id} className="flex flex-wrap items-start gap-x-6 gap-y-3 py-4">
+              {shortlisted.map((app, i) => (
+                <li
+                  key={app.id}
+                  className="row-hover animate-fade-up flex flex-wrap items-start gap-x-6 gap-y-3 py-4"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
                   <div className="min-w-[15rem] flex-1">
                     <p className="text-[15px] font-medium">
                       <Link href={`/profile/${app.studentId}`} className="hover:text-signal hover:underline">

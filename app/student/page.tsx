@@ -2,8 +2,12 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { ExternalLink, Search } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { filterJobs, getFellowApplicants, getMyApplications, getMyProfile, getSavedJobIds, getSuggestedJobs } from "@/app/actions";
+import { filterJobs, getConnectionCount, getFellowApplicants, getMyApplications, getMyProfile, getSavedJobIds, getSuggestedJobs, withdrawApplication } from "@/app/actions";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { Avatar } from "@/components/Avatar";
 import { ApplyForm } from "@/components/ApplyForm";
+import { LiveTimeAgo } from "@/components/LiveTimeAgo";
+import { ReadMore } from "@/components/ReadMore";
 import { SaveJobButton } from "@/components/SaveJobButton";
 import { StatusPill } from "@/components/StatusPill";
 import { TopBar } from "@/components/TopBar";
@@ -27,6 +31,7 @@ export default async function StudentHub({ searchParams }: Props) {
     getSuggestedJobs(),
   ]);
   const appliedJobIds = new Set(applications.map((a) => a.job.id));
+  const connectionCount = await getConnectionCount((session?.user as any)?.id ?? "");
 
   // Only fetched for jobs this student already applied to — the action
   // itself also enforces that gate server-side.
@@ -48,13 +53,45 @@ export default async function StudentHub({ searchParams }: Props) {
 
   return (
     <>
-      <TopBar who={session?.user?.name ?? "Student"} context="Job hub" profileHref="/student/profile" />
+      <TopBar who={session?.user?.name ?? "Student"} context="Job hub" profileHref="/student/profile" networkHref="/student/network" />
 
-      <main className="mx-auto max-w-5xl space-y-10 px-5 py-8">
+      <main className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="hidden lg:block">
+          <div className="panel sticky top-20 overflow-hidden">
+            <div className="h-14 bg-signal/15" />
+            <div className="-mt-7 px-4 pb-4">
+              <Avatar name={session?.user?.name ?? "?"} size={56} />
+              <p className="mt-2 font-display text-[16px] font-semibold">{session?.user?.name}</p>
+              {profile?.headline && <p className="mt-0.5 text-[13px] text-mist">{profile.headline}</p>}
+              {profile?.hometown && <p className="mt-1 text-[12px] text-mist">{profile.hometown}</p>}
+            </div>
+            <div className="divide-y divide-line border-t border-line text-[13px]">
+              <Link href="/student/network" className="row-hover flex items-center justify-between !mx-0 !rounded-none px-4 py-2.5">
+                <span className="text-mist">Connections</span>
+                <span className="font-semibold text-signal">{connectionCount}</span>
+              </Link>
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-mist">Profile views</span>
+                <span className="font-semibold text-signal">{profile?.profileViews ?? 0}</span>
+              </div>
+              <Link href="/student/profile" className="block px-4 py-2.5 font-medium text-signal hover:bg-slate1/50">
+                Edit profile
+              </Link>
+            </div>
+          </div>
+        </aside>
+
+        <div className="min-w-0 space-y-10">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="panel p-4">
-              <p className="font-display text-[22px] font-semibold">{s.value}</p>
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              className="panel animate-fade-up p-4 transition-colors hover:border-signal/30"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <p className="font-display text-[22px] font-semibold">
+                <AnimatedNumber value={s.value} />
+              </p>
               <p className="mt-0.5 text-[13px] text-mist">{s.label}</p>
             </div>
           ))}
@@ -141,12 +178,12 @@ export default async function StudentHub({ searchParams }: Props) {
             </p>
           ) : (
             <ul className="divide-y divide-line border-y border-line">
-              {jobs.map((job) => {
+              {jobs.map((job, i) => {
                 const match = skillMatchPercent(profile?.skills, `${job.title} ${job.description}`);
                 const fellows = fellowApplicantsByJob.get(job.id) ?? [];
 
                 return (
-                <li key={job.id} className="py-5">
+                <li key={job.id} className="row-hover animate-fade-up py-5" style={{ animationDelay: `${i * 40}ms` }}>
                   <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
                     <h3 className="text-[16px] font-medium">{job.title}</h3>
                     <p className="text-[13px] text-mist">{job.company.companyName || job.company.name}</p>
@@ -161,7 +198,7 @@ export default async function StudentHub({ searchParams }: Props) {
                       </span>
                     )}
                     <div className="ml-auto flex items-center gap-3">
-                      <p className="text-[13px] text-mist">Posted {formatDate(job.createdAt)}</p>
+                      <p className="text-[13px] text-mist">Posted <LiveTimeAgo date={job.createdAt} /></p>
                       <SaveJobButton jobId={job.id} saved={savedJobIds.has(job.id)} />
                     </div>
                   </div>
@@ -185,22 +222,28 @@ export default async function StudentHub({ searchParams }: Props) {
                     </div>
                   </dl>
 
-                  <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-paper/80">{job.description}</p>
+                  <ReadMore text={job.description} />
 
                   <div className="mt-4">
                     <ApplyForm jobId={job.id} alreadyApplied={appliedJobIds.has(job.id)} />
                     {appliedJobIds.has(job.id) && fellows.length > 0 && (
-                      <p className="mt-2 text-[13px] text-mist">
-                        {fellows.length} other {fellows.length === 1 ? "person has" : "people have"} applied —{" "}
-                        {fellows.map((f, i) => (
-                          <span key={f.id}>
-                            <Link href={`/profile/${f.id}`} className="text-signal hover:underline">
+                      <div className="mt-2">
+                        <p className="text-[13px] text-mist">
+                          {fellows.length} other {fellows.length === 1 ? "person has" : "people have"} applied
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap gap-2">
+                          {fellows.map((f) => (
+                            <Link
+                              key={f.id}
+                              href={`/profile/${f.id}`}
+                              className="row-hover inline-flex items-center gap-1.5 rounded-full border border-line py-1 pl-1 pr-3 text-[13px] hover:border-signal/40"
+                            >
+                              <Avatar name={f.name} size={22} />
                               {f.name}
                             </Link>
-                            {i < fellows.length - 1 ? ", " : ""}
-                          </span>
-                        ))}
-                      </p>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </li>
@@ -231,7 +274,8 @@ export default async function StudentHub({ searchParams }: Props) {
                     <th className="py-2.5 pr-4 font-medium">Status</th>
                     <th className="py-2.5 pr-4 font-medium">Interview</th>
                     <th className="py-2.5 pr-4 font-medium">Updated</th>
-                    <th className="py-2.5 font-medium">CV</th>
+                    <th className="py-2.5 pr-4 font-medium">CV</th>
+                    <th className="py-2.5 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -247,7 +291,7 @@ export default async function StudentHub({ searchParams }: Props) {
                         {app.status === "INTERVIEW_CONFIRMED" && app.interviewAt ? formatDateTime(app.interviewAt) : "—"}
                       </td>
                       <td className="py-3 pr-4 text-mist">{formatDate(app.updatedAt)}</td>
-                      <td className="py-3">
+                      <td className="py-3 pr-4">
                         <a
                           href={app.cvUrl}
                           target="_blank"
@@ -258,6 +302,16 @@ export default async function StudentHub({ searchParams }: Props) {
                           <ExternalLink className="h-3 w-3" aria-hidden />
                         </a>
                       </td>
+                      <td className="py-3">
+                        {app.status === "APPLIED" && (
+                          <form action={withdrawApplication}>
+                            <input type="hidden" name="applicationId" value={app.id} />
+                            <button type="submit" className="text-[13px] text-mist hover:text-stop">
+                              Withdraw
+                            </button>
+                          </form>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -265,6 +319,7 @@ export default async function StudentHub({ searchParams }: Props) {
             </div>
           )}
         </section>
+        </div>
       </main>
     </>
   );

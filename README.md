@@ -52,6 +52,48 @@ production — NextAuth derives it from the deployment URL.
 Create one company account and one student account from the landing page.
 Company publishes roles at `/company`; student searches and applies at `/student`.
 
+## New: student connections and LinkedIn-style layout
+
+- Students can **Connect** with each other from a profile page (reach one
+  via the fellow-applicants chips on a job you've applied to). States:
+  Connect, Pending, Accept/Decline, Connected. If two students both send a
+  request, it auto-accepts.
+- New **My network** page lists invitations and connections.
+- The student hub has a LinkedIn-style left sidebar (avatar, headline,
+  connections, profile views) on large screens.
+- Initial-letter avatars on profiles, network, and fellow applicants.
+
+This adds a `Connection` table, so run once:
+
+```bash
+npx prisma db push
+```
+
+## New: more dynamic and interactive UI
+
+- Stat numbers count up on load instead of just appearing.
+- Job listings and applicant rows fade in with a slight stagger, and
+  highlight on hover.
+- "Posted X ago" ticks live (updates itself every minute) instead of being
+  fixed at page load.
+- Long job descriptions collapse with a "Read more" toggle.
+- Buttons give a small tactile press effect (scale down slightly on click).
+
+All presentation-only — no schema change, no new dependency. Copy the files
+over and restart `npm run dev`.
+
+## New: withdraw, duplicate, and friendlier dates
+
+- Students can **withdraw** an application while it's still pending (before
+  a company shortlists, confirms, or rejects it) — a plain text link in the
+  applications table.
+- Companies can **duplicate** a posting instead of retyping a near-identical
+  role.
+- Job listings now show "posted 2h ago" / "yesterday" instead of always a
+  full date, falling back to the date after a week.
+
+No schema change — just copy the files over and restart `npm run dev`.
+
 ## New: shortlisting, hometown, and suggested jobs
 
 - Companies can now **Shortlist** an applicant instead of deciding right

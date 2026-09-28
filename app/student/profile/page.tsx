@@ -14,7 +14,7 @@ export default async function StudentProfilePage() {
 
   return (
     <>
-      <TopBar who={session?.user?.name ?? "Student"} context="Your profile" />
+      <TopBar who={session?.user?.name ?? "Student"} context="Your profile" networkHref="/student/network" />
 
       <main className="mx-auto max-w-3xl space-y-10 px-5 py-8">
         <div>

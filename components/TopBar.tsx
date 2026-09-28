@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { UserRound } from "lucide-react";
+import { Users, UserRound } from "lucide-react";
 import { SignOutButton } from "./SignOutButton";
 
-type Props = { who: string; context: string; profileHref?: string };
+type Props = { who: string; context: string; profileHref?: string; networkHref?: string };
 
-export function TopBar({ who, context, profileHref }: Props) {
+export function TopBar({ who, context, profileHref, networkHref }: Props) {
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-ink/85 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3.5">
@@ -12,6 +12,12 @@ export function TopBar({ who, context, profileHref }: Props) {
           CampusHiring
         </Link>
         <div className="flex items-center gap-3">
+          {networkHref && (
+            <Link href={networkHref} className="btn-ghost">
+              <Users className="h-3.5 w-3.5" aria-hidden />
+              My network
+            </Link>
+          )}
           {profileHref && (
             <Link
               href={profileHref}

@@ -550,3 +550,154 @@ export async function getSuggestedJobs() {
     .filter((job) => job.match !== null && job.match >= 50)
     .sort((a, b) => (b.match ?? 0) - (a.match ?? 0));
 }
+
+/* ------------------------------------------------------------------ *
+ * Withdraw an application — only while it's still pending, so a
+ * candidate can't yank an application out from under a decision that's
+ * already been made
+ * ------------------------------------------------------------------ */
+
+export async function withdrawApplication(formData: FormData): Promise<ActionResult> {
+  const student = await requireUser(Role.STUDENT);
+  const applicationId = String(formData.get("applicationId") || "");
+
+  const result = await prisma.application.deleteMany({
+    where: { id: applicationId, studentId: student.id, status: ApplicationStatus.APPLIED },
+  });
+
+  if (result.count === 0) {
+    return { ok: false, message: "That application can no longer be withdrawn." };
+  }
+
+  revalidatePath("/student");
+  revalidatePath("/company");
+  return { ok: true, message: "Application withdrawn." };
+}
+
+/* ------------------------------------------------------------------ *
+ * Duplicate a posting — saves retyping a near-identical role
+ * ------------------------------------------------------------------ */
+
+export async function duplicateJob(formData: FormData): Promise<ActionResult> {
+  const company = await requireUser(Role.COMPANY);
+  const jobId = String(formData.get("jobId") || "");
+
+  const job = await prisma.job.findFirst({ where: { id: jobId, companyId: company.id } });
+  if (!job) return { ok: false, message: "That posting no longer exists." };
+
+  await prisma.job.create({
+    data: {
+      title: job.title,
+      location: job.location,
+      salary: job.salary,
+      employment: job.employment,
+      description: job.description,
+      companyId: company.id,
+    },
+  });
+
+  revalidatePath("/company");
+  revalidatePath("/student");
+  return { ok: true, message: `Duplicated ${job.title}.` };
+}
+
+/* ------------------------------------------------------------------ *
+ * Connections — student-to-student, LinkedIn-style
+ * ------------------------------------------------------------------ */
+
+export async function getConnectionStatus(otherId: string) {
+  const user = await requireUser();
+  if (user.id === otherId) return "self" as const;
+
+  const [sent, received] = await Promise.all([
+    prisma.connection.findUnique({ where: { requesterId_receiverId: { requesterId: user.id, receiverId: otherId } } }),
+    prisma.connection.findUnique({ where: { requesterId_receiverId: { requesterId: otherId, receiverId: user.id } } }),
+  ]);
+
+  if (sent?.status === "ACCEPTED" || received?.status === "ACCEPTED") return "connected" as const;
+  if (sent) return "sent" as const;
+  if (received) return "incoming" as const;
+  return "none" as const;
+}
+
+export async function sendConnectionRequest(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser(Role.STUDENT);
+  const targetId = String(formData.get("targetId") || "");
+  if (!targetId || targetId === user.id) return { ok: false, message: "Can't connect with yourself." };
+
+  const target = await prisma.user.findFirst({ where: { id: targetId, role: Role.STUDENT }, select: { id: true } });
+  if (!target) return { ok: false, message: "That student no longer exists." };
+
+  // If they'd already asked to connect, accept that instead of creating a
+  // second, redundant request — mirrors how a mutual request resolves.
+  const reverse = await prisma.connection.findUnique({
+    where: { requesterId_receiverId: { requesterId: targetId, receiverId: user.id } },
+  });
+  if (reverse) {
+    await prisma.connection.update({ where: { id: reverse.id }, data: { status: "ACCEPTED" } });
+    revalidatePath(`/profile/${targetId}`);
+    revalidatePath("/student/network");
+    return { ok: true, message: "You're now connected." };
+  }
+
+  await prisma.connection.upsert({
+    where: { requesterId_receiverId: { requesterId: user.id, receiverId: targetId } },
+    update: {},
+    create: { requesterId: user.id, receiverId: targetId, status: "PENDING" },
+  });
+
+  revalidatePath(`/profile/${targetId}`);
+  revalidatePath("/student/network");
+  return { ok: true, message: "Request sent." };
+}
+
+export async function respondToConnectionRequest(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser(Role.STUDENT);
+  const requesterId = String(formData.get("requesterId") || "");
+  const action = String(formData.get("action") || "");
+
+  const conn = await prisma.connection.findUnique({
+    where: { requesterId_receiverId: { requesterId, receiverId: user.id } },
+  });
+  if (!conn) return { ok: false, message: "That request no longer exists." };
+
+  if (action === "accept") {
+    await prisma.connection.update({ where: { id: conn.id }, data: { status: "ACCEPTED" } });
+  } else {
+    await prisma.connection.delete({ where: { id: conn.id } });
+  }
+
+  revalidatePath("/student/network");
+  revalidatePath(`/profile/${requesterId}`);
+  return { ok: true, message: action === "accept" ? "Connected." : "Request declined." };
+}
+
+export async function getMyNetwork() {
+  const user = await requireUser(Role.STUDENT);
+
+  const [incoming, connections] = await Promise.all([
+    prisma.connection.findMany({
+      where: { receiverId: user.id, status: "PENDING" },
+      select: { requester: { select: { id: true, name: true, headline: true } } },
+    }),
+    prisma.connection.findMany({
+      where: { status: "ACCEPTED", OR: [{ requesterId: user.id }, { receiverId: user.id }] },
+      select: {
+        requesterId: true,
+        requester: { select: { id: true, name: true, headline: true } },
+        receiver: { select: { id: true, name: true, headline: true } },
+      },
+    }),
+  ]);
+
+  return {
+    incoming: incoming.map((i) => i.requester),
+    connections: connections.map((c) => (c.requesterId === user.id ? c.receiver : c.requester)),
+  };
+}
+
+export async function getConnectionCount(userId: string) {
+  return prisma.connection.count({
+    where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { receiverId: userId }] },
+  });
+}
