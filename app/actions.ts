@@ -341,6 +341,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   const skills = String(formData.get("skills") || "").trim();
   const experience = String(formData.get("experience") || "").trim();
   const hometown = String(formData.get("hometown") || "").trim();
+  const openToWork = formData.get("openToWork") === "on";
 
   await prisma.user.update({
     where: { id: student.id },
@@ -350,6 +351,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
       skills: skills || null,
       experience: experience || null,
       hometown: hometown || null,
+      openToWork,
     },
   });
 
@@ -370,6 +372,7 @@ export async function getMyProfile() {
       skills: true,
       experience: true,
       hometown: true,
+      openToWork: true,
       profileViews: true,
     },
   });
@@ -392,6 +395,7 @@ export async function viewStudentProfile(studentId: string) {
       skills: true,
       experience: true,
       hometown: true,
+      openToWork: true,
     },
   });
 
@@ -700,4 +704,102 @@ export async function getConnectionCount(userId: string) {
   return prisma.connection.count({
     where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { receiverId: userId }] },
   });
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Feed — posts, articles, likes and comments
+ * ------------------------------------------------------------------ */
+
+export async function createPost(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser();
+  const title = String(formData.get("title") || "").trim().slice(0, 150);
+  const content = String(formData.get("content") || "").trim();
+
+  if (!content) return { ok: false, message: "Write something first." };
+  if (content.length > 5000) return { ok: false, message: "Posts are limited to 5,000 characters." };
+
+  await prisma.post.create({ data: { title: title || null, content, authorId: user.id } });
+  revalidatePath("/feed");
+  return { ok: true, message: title ? "Article published." : "Posted." };
+}
+
+export async function toggleLike(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser();
+  const postId = String(formData.get("postId") || "");
+  if (!postId) return { ok: false, message: "Missing post." };
+
+  const existing = await prisma.postLike.findUnique({
+    where: { postId_userId: { postId, userId: user.id } },
+    select: { id: true },
+  });
+
+  if (existing) {
+    await prisma.postLike.delete({ where: { id: existing.id } });
+  } else {
+    const post = await prisma.post.findUnique({ where: { id: postId }, select: { id: true } });
+    if (!post) return { ok: false, message: "That post was removed." };
+    await prisma.postLike.create({ data: { postId, userId: user.id } });
+  }
+
+  revalidatePath("/feed");
+  return { ok: true, message: existing ? "Unliked." : "Liked." };
+}
+
+export async function addComment(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser();
+  const postId = String(formData.get("postId") || "");
+  const content = String(formData.get("content") || "").trim();
+
+  if (!content) return { ok: false, message: "Write a comment first." };
+  if (content.length > 500) return { ok: false, message: "Comments are limited to 500 characters." };
+
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { id: true } });
+  if (!post) return { ok: false, message: "That post was removed." };
+
+  await prisma.comment.create({ data: { postId, content, authorId: user.id } });
+  revalidatePath("/feed");
+  return { ok: true, message: "Comment added." };
+}
+
+export async function deletePost(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser();
+  const postId = String(formData.get("postId") || "");
+
+  // Scoped by authorId, so only the author can delete their own post.
+  const result = await prisma.post.deleteMany({ where: { id: postId, authorId: user.id } });
+  if (result.count === 0) return { ok: false, message: "You can only delete your own posts." };
+
+  revalidatePath("/feed");
+  return { ok: true, message: "Post deleted." };
+}
+
+export async function getFeed() {
+  const user = await requireUser();
+
+  const posts = await prisma.post.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      createdAt: true,
+      authorId: true,
+      author: { select: { id: true, name: true, role: true, companyName: true, headline: true } },
+      likes: { where: { userId: user.id }, select: { id: true } },
+      _count: { select: { likes: true, comments: true } },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        take: 5,
+        select: {
+          id: true,
+          content: true,
+          author: { select: { id: true, name: true, role: true, companyName: true } },
+        },
+      },
+    },
+  });
+
+  return { userId: user.id, role: user.role, posts };
 }

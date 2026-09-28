@@ -14,7 +14,7 @@ export default async function NetworkPage() {
 
   return (
     <>
-      <TopBar who={session?.user?.name ?? "Student"} context="My network" profileHref="/student/profile" />
+      <TopBar who={session?.user?.name ?? "Student"} context="My network" profileHref="/student/profile" feedHref="/feed" />
 
       <main className="mx-auto max-w-3xl space-y-10 px-5 py-8">
         <div>

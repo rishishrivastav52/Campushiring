@@ -52,6 +52,20 @@ production — NextAuth derives it from the deployment URL.
 Create one company account and one student account from the landing page.
 Company publishes roles at `/company`; student searches and applies at `/student`.
 
+## New: feed, articles, likes, comments, and Open to work
+
+- `/feed` is a shared feed for students and companies. Post a short update,
+  or hit **Write article** to add a title and a longer body.
+- Like and comment on posts; authors can delete their own posts.
+- Students can tick **Open to work** on their profile to show a badge.
+
+This adds `Post`, `PostLike` and `Comment` tables and an `openToWork`
+field, so run once:
+
+```bash
+npx prisma db push
+```
+
 ## New: student connections and LinkedIn-style layout
 
 - Students can **Connect** with each other from a profile page (reach one

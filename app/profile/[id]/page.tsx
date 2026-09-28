@@ -45,7 +45,14 @@ export default async function CandidateProfilePage({ params }: { params: { id: s
           <div className="flex items-start gap-4">
             <Avatar name={student.name} size={56} />
             <div className="flex-1">
-              <h1 className="font-display text-[22px] font-semibold tracking-tight">{student.name}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-[22px] font-semibold tracking-tight">{student.name}</h1>
+                {student.openToWork && (
+                  <span className="rounded-full border border-go/40 bg-go/10 px-2.5 py-0.5 text-[12px] font-medium text-go">
+                    Open to work
+                  </span>
+                )}
+              </div>
               {student.headline && <p className="mt-1 text-[14px] text-mist">{student.headline}</p>}
               <p className="mt-1 text-[13px] text-mist">{student.email}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-mist">

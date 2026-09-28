@@ -53,7 +53,7 @@ export default async function StudentHub({ searchParams }: Props) {
 
   return (
     <>
-      <TopBar who={session?.user?.name ?? "Student"} context="Job hub" profileHref="/student/profile" networkHref="/student/network" />
+      <TopBar who={session?.user?.name ?? "Student"} context="Job hub" profileHref="/student/profile" networkHref="/student/network" feedHref="/feed" />
 
       <main className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="hidden lg:block">

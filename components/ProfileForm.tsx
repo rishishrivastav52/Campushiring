@@ -19,9 +19,10 @@ type Props = {
   skills: string | null;
   experience: string | null;
   hometown: string | null;
+  openToWork: boolean;
 };
 
-export function ProfileForm({ headline, bio, skills, experience, hometown }: Props) {
+export function ProfileForm({ headline, bio, skills, experience, hometown, openToWork }: Props) {
   const [state, formAction] = useFormState(updateProfileAction, null);
 
   return (
@@ -78,6 +79,10 @@ export function ProfileForm({ headline, bio, skills, experience, hometown }: Pro
           placeholder="Past internships, jobs, or projects — one or two lines each is plenty."
         />
       </div>
+      <label className="flex items-center gap-2 text-[14px] text-paper/90">
+        <input type="checkbox" name="openToWork" defaultChecked={openToWork} className="h-4 w-4 accent-[#FFB020]" />
+        Open to work — show a badge on my profile
+      </label>
       <div className="flex items-center gap-4">
         <Submit />
         {state && <p className={cn("text-[13px]", state.ok ? "text-go" : "text-stop")}>{state.message}</p>}

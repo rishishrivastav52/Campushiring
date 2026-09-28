@@ -30,7 +30,7 @@ export default async function CompanyDashboard() {
 
   return (
     <>
-      <TopBar who={session?.user?.name ?? "Company"} context="Hiring dashboard" />
+      <TopBar who={session?.user?.name ?? "Company"} context="Hiring dashboard" feedHref="/feed" />
 
       <main className="mx-auto max-w-5xl space-y-10 px-5 py-8">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
